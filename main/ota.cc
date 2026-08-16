@@ -24,6 +24,10 @@
 
 #define TAG "Ota"
 
+#if CONFIG_XI_LOCAL_BRIDGE
+static constexpr const char* kOfficialOtaUrl = "https://api.tenclass.net/xiaozhi/ota/";
+#endif
+
 
 Ota::Ota() {
 #ifdef ESP_EFUSE_BLOCK_USR_DATA
@@ -44,12 +48,16 @@ Ota::~Ota() {
 }
 
 std::string Ota::GetCheckVersionUrl() {
+#if CONFIG_XI_LOCAL_BRIDGE
+    return CONFIG_XI_LOCAL_OTA_URL;
+#else
     Settings settings("wifi", false);
     std::string url = settings.GetString("ota_url");
     if (url.empty()) {
         url = CONFIG_OTA_URL;
     }
     return url;
+#endif
 }
 
 std::unique_ptr<Http> Ota::SetupHttp() {
@@ -88,13 +96,24 @@ esp_err_t Ota::CheckVersion() {
         return ESP_ERR_INVALID_ARG;
     }
 
-    auto http = SetupHttp();
-
     std::string data = board.GetSystemInfoJson();
     std::string method = data.length() > 0 ? "POST" : "GET";
-    http->SetContent(std::move(data));
+    auto http = SetupHttp();
+    auto request_data = data;
+    http->SetContent(std::move(request_data));
 
-    if (!http->Open(method, url)) {
+    bool opened = http->Open(method, url);
+#if CONFIG_XI_LOCAL_BRIDGE
+    if (!opened) {
+        ESP_LOGW(TAG, "Local Xi bridge unavailable, falling back to XiaoZhi cloud");
+        url = kOfficialOtaUrl;
+        http = SetupHttp();
+        request_data = data;
+        http->SetContent(std::move(request_data));
+        opened = http->Open(method, url);
+    }
+#endif
+    if (!opened) {
         int last_error = http->GetLastError();
         ESP_LOGE(TAG, "Failed to open HTTP connection, code=0x%x", last_error);
         return last_error;
