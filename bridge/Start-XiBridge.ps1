@@ -3,6 +3,8 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$env:PYTHONIOENCODING = 'utf-8'
+$env:PYTHONUTF8 = '1'
 
 $bridgeRoot = 'C:\Users\Gir\Documents\ChatGPT\XiaoZhi\xiaozhi-esp32-server\main\xiaozhi-server'
 $pythonExe = 'C:\ESP32_Projects\xi-bridge-venv\Scripts\python.exe'

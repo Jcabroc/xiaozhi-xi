@@ -23,20 +23,33 @@ El modelo de lenguaje es local y no consume tokens de OpenAI. Edge TTS todavía 
 - Servidor local: `ws://192.168.1.89:8000/xiaozhi/v1/`.
 - OTA local: `http://192.168.1.89:8003/xiaozhi/ota/`.
 
-## Arranque
+## Selector de modos
 
 Desde PowerShell:
 
 ```powershell
-& 'C:\ESP32_Projects\xiaozhi-esp32\bridge\Start-XiBridge.ps1'
+& 'C:\ESP32_Projects\xiaozhi-esp32\bridge\Set-XiMode.ps1' -Mode Ollama
+& 'C:\ESP32_Projects\xiaozhi-esp32\bridge\Set-XiMode.ps1' -Mode XiaoZhi
+& 'C:\ESP32_Projects\xiaozhi-esp32\bridge\Set-XiMode.ps1' -Mode GPT
+& 'C:\ESP32_Projects\xiaozhi-esp32\bridge\Set-XiMode.ps1' -Mode Status
 ```
 
-La primera carga de Qwen después de reiniciar el PC puede tardar entre 30 y 60 segundos. El lanzador precalienta el modelo antes de anunciar que el puente está disponible. Mantener la ventana abierta mantiene el servidor de Xi activo.
+El selector administra el puente en segundo plano, registra su PID y reinicia Shi por `COM4` cuando está disponible. Se puede indicar otro puerto con `-Port COM7` o evitar el reinicio con `-NoDeviceReset`.
 
-## Conmutación prevista
+La primera carga de Qwen después de reiniciar el PC puede tardar entre 30 y 60 segundos. El selector precalienta el modelo antes de anunciar que el puente está disponible. `Start-XiBridge.ps1` se conserva como herramienta de diagnóstico en primer plano.
+
+Antes de usar GPT se guarda la clave fuera del repositorio:
+
+```powershell
+& 'C:\ESP32_Projects\xiaozhi-esp32\bridge\Set-XiOpenAIKey.ps1'
+```
+
+El modo GPT utiliza `gpt-5-mini` y consume tokens de OpenAI API. No representa ni comparte automáticamente el contexto de una tarea de Codex.
+
+## Conmutación
 
 La cara estable está protegida por la etiqueta Git `xi-stable-v1`. La integración se desarrolla en la rama `agent/xi-voice-bridge`.
 
-La siguiente modificación de firmware debe intentar primero la OTA local y usar su WebSocket cuando el PC responde. Si el puente no está disponible, Xi debe recurrir a la OTA oficial de XiaoZhi. Así, detener el lanzador devuelve a Xi al servicio de nube sin perder el firmware estable.
+El firmware instalado intenta primero la OTA local y usa su WebSocket cuando el PC responde. Si el puente no está disponible al arrancar, recurre a la OTA oficial de XiaoZhi. La conmutación sucede durante el inicio, no a mitad de una conversación.
 
-No se debe flashear esa conmutación hasta comprobar el retorno automático y guardar el binario estable actual.
+La versión estable está respaldada fuera del árbol de compilación y el modo puente tiene su propio respaldo con SHA-256.

@@ -66,6 +66,12 @@ La personalidad conversacional se configura en la consola web de XiaoZhi y no co
 2. Estabilizar y medir latencia, reconocimiento, síntesis y cambio de proveedor.
 3. Añadir movimiento solo después de estabilizar la voz.
 
+## Documentación
+
+- [Manual completo de instalación y uso](docs/MANUAL_SHI.md)
+- [Arquitectura futura de conocimiento, robots y HUB](docs/ARQUITECTURA_HUB.md)
+- [Puente local y herramientas de modo](bridge/README.md)
+
 La propuesta mecánica contempla cinco servos: yaw y pitch de cabeza, dos brazos y una antena decorativa. Se recomienda un PCA9685 por I²C y una fuente independiente de 5–6 V para los servos, con tierra común con Xi. No deben alimentarse cinco servos desde el regulador o la entrada de la placa: sus picos de corriente pueden introducir ruido, reinicios o daños.
 
 ## Base y licencia
