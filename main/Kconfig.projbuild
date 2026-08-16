@@ -6,6 +6,18 @@ config OTA_URL
     help
         The application will access this URL to check for new firmwares and server address.
 
+config XI_LOCAL_BRIDGE
+    bool "Prefer Xi local voice bridge"
+    default n
+    help
+        Try a local XiaoZhi-compatible OTA/server first and fall back to the
+        official XiaoZhi cloud when the local bridge is unavailable.
+
+config XI_LOCAL_OTA_URL
+    string "Xi local bridge OTA URL"
+    depends on XI_LOCAL_BRIDGE
+    default "http://192.168.1.89:8003/xiaozhi/ota/"
+
 choice
     prompt "Flash Assets"
     default FLASH_DEFAULT_ASSETS if !USE_EMOTE_MESSAGE_STYLE

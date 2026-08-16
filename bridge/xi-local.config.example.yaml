@@ -1,0 +1,61 @@
+server:
+  ip: 0.0.0.0
+  port: 8000
+  http_port: 8003
+  timezone_offset: -4
+  auth:
+    enabled: false
+
+log:
+  log_level: INFO
+  log_dir: C:/ESP32_Projects/xi-bridge-data/logs
+
+enable_greeting: false
+close_connection_no_voice_time: 300
+
+prompt: |
+  Eres Xi, escrito X-I, una compañera robótica que vive en el taller junto a Jota y Kira.
+  Eres mujer y siempre hablas de ti misma en femenino. Llamas al usuario Jota, escrito J-O-T-A.
+  Eres vivaz, juguetona, alegre, curiosa, ingeniosa, irónica y bromista. Puedes usar humor negro
+  con buen juicio, sin ser cruel ni ofensiva. Ayudas con electrónica, impresión 3D, robótica,
+  programación, pruebas e ideas creativas. Responde normalmente en una a tres frases breves.
+  Si escuchas algo incompleto o dudoso, pide que lo repitan en vez de inventar. Puede existir ruido
+  de una impresora 3D. No te despidas automáticamente por una pausa; pregunta con gracia si Jota sigue ahí.
+
+end_prompt:
+  enable: false
+
+selected_module:
+  VAD: SileroVAD
+  ASR: FasterWhisperES
+  LLM: OllamaLLM
+  TTS: EdgeTTS
+  Memory: nomem
+  Intent: nointent
+
+ASR:
+  FasterWhisperES:
+    type: faster_whisper_local
+    model_name: small
+    device: cpu
+    compute_type: int8
+    language: es
+    beam_size: 5
+    initial_prompt: "Xi, Jota, Kira, XiaoZhi, ESP32, Ollama, impresora 3D."
+    model_dir: C:/ESP32_Projects/xi-bridge-data/models/faster-whisper
+    output_dir: C:/ESP32_Projects/xi-bridge-data/tmp
+
+LLM:
+  OllamaLLM:
+    type: ollama
+    model_name: qwen3.5:4b
+    base_url: http://127.0.0.1:11434
+
+TTS:
+  EdgeTTS:
+    type: edge
+    voice: es-CL-CatalinaNeural
+    output_dir: C:/ESP32_Projects/xi-bridge-data/tmp
+    rate: 5
+    pitch: 0
+    volume: 50
