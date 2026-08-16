@@ -125,40 +125,41 @@ void SingleLed::OnStateChanged() {
     auto device_state = app.GetDeviceState();
     switch (device_state) {
         case kDeviceStateStarting:
-            SetColor(0, 0, DEFAULT_BRIGHTNESS);
-            StartContinuousBlink(100);
+            SetColor(0, 0, HIGH_BRIGHTNESS);
+            StartContinuousBlink(250);
             break;
         case kDeviceStateWifiConfiguring:
-            SetColor(0, 0, DEFAULT_BRIGHTNESS);
+            SetColor(HIGH_BRIGHTNESS, HIGH_BRIGHTNESS / 2, 0);
             StartContinuousBlink(500);
             break;
         case kDeviceStateIdle:
-            TurnOff();
+            SetColor(0, DEFAULT_BRIGHTNESS, 0);
+            TurnOn();
             break;
         case kDeviceStateConnecting:
-            SetColor(0, 0, DEFAULT_BRIGHTNESS);
-            TurnOn();
+            SetColor(0, 0, HIGH_BRIGHTNESS);
+            StartContinuousBlink(400);
             break;
         case kDeviceStateListening:
         case kDeviceStateAudioTesting:
-            if (app.IsVoiceDetected()) {
-                SetColor(HIGH_BRIGHTNESS, 0, 0);
-            } else {
-                SetColor(LOW_BRIGHTNESS, 0, 0);
-            }
+            SetColor(0, HIGH_BRIGHTNESS / 2, HIGH_BRIGHTNESS / 2);
             TurnOn();
             break;
         case kDeviceStateSpeaking:
-            SetColor(0, DEFAULT_BRIGHTNESS, 0);
+            SetColor(HIGH_BRIGHTNESS / 2, 0, HIGH_BRIGHTNESS);
             TurnOn();
             break;
         case kDeviceStateUpgrading:
-            SetColor(0, DEFAULT_BRIGHTNESS, 0);
-            StartContinuousBlink(100);
+            SetColor(HIGH_BRIGHTNESS, HIGH_BRIGHTNESS / 2, 0);
+            StartContinuousBlink(250);
             break;
         case kDeviceStateActivating:
-            SetColor(0, DEFAULT_BRIGHTNESS, 0);
+            SetColor(0, 0, HIGH_BRIGHTNESS);
             StartContinuousBlink(500);
+            break;
+        case kDeviceStateFatalError:
+            SetColor(HIGH_BRIGHTNESS, 0, 0);
+            StartContinuousBlink(200);
             break;
         default:
             ESP_LOGW(TAG, "Unknown led strip event: %d", device_state);

@@ -233,6 +233,7 @@ void Application::Run() {
             if (GetDeviceState() == kDeviceStateListening) {
                 auto led = Board::GetInstance().GetLed();
                 led->OnStateChanged();
+                Board::GetInstance().GetDisplay()->SetVoiceActivity(audio_service_.IsVoiceDetected());
             }
         }
 
@@ -553,6 +554,7 @@ void Application::InitializeProtocol() {
                 ESP_LOGI(TAG, ">> %s", text->valuestring);
                 Schedule([display, message = std::string(text->valuestring)]() {
                     display->SetChatMessage("user", message.c_str());
+                    display->SetEmotion("thinking");
                 });
             }
         } else if (strcmp(type->valuestring, "llm") == 0) {
@@ -869,20 +871,20 @@ void Application::HandleStateChangedEvent() {
     switch (new_state) {
         case kDeviceStateUnknown:
         case kDeviceStateIdle:
-            display->SetStatus(Lang::Strings::STANDBY);
             display->ClearChatMessages();  // Clear messages first
             display->SetEmotion("neutral"); // Then set emotion (wechat mode checks child count)
+            display->SetStatus(Lang::Strings::STANDBY);
             audio_service_.EnableVoiceProcessing(false);
             audio_service_.EnableWakeWordDetection(true);
             break;
         case kDeviceStateConnecting:
-            display->SetStatus(Lang::Strings::CONNECTING);
             display->SetEmotion("neutral");
+            display->SetStatus(Lang::Strings::CONNECTING);
             display->SetChatMessage("system", "");
             break;
         case kDeviceStateListening:
-            display->SetStatus(Lang::Strings::LISTENING);
             display->SetEmotion("neutral");
+            display->SetStatus(Lang::Strings::LISTENING);
 
             // Make sure the audio processor is running
             if (play_popup_on_listening_ || !audio_service_.IsAudioProcessorRunning()) {

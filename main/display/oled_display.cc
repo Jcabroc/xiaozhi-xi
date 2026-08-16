@@ -18,8 +18,8 @@ LV_FONT_DECLARE(BUILTIN_ICON_FONT);
 LV_FONT_DECLARE(font_awesome_30_1);
 
 OledDisplay::OledDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_handle_t panel,
-    int width, int height, bool mirror_x, bool mirror_y)
-    : panel_io_(panel_io), panel_(panel) {
+    int width, int height, bool mirror_x, bool mirror_y, bool friendly_face)
+    : panel_io_(panel_io), panel_(panel), friendly_face_(friendly_face) {
     width_ = width;
     height_ = height;
 
@@ -93,9 +93,16 @@ void OledDisplay::SetupUI() {
     } else {
         SetupUI_128x32();
     }
+    if (friendly_face_ && height_ == 64) {
+        SetupFriendlyFace();
+    }
 }
 
 OledDisplay::~OledDisplay() {
+    if (face_timer_ != nullptr) {
+        lv_timer_delete(face_timer_);
+        face_timer_ = nullptr;
+    }
     if (content_ != nullptr) {
         lv_obj_del(content_);
     }
@@ -133,6 +140,334 @@ OledDisplay::~OledDisplay() {
         esp_lcd_panel_io_del(panel_io_);
     }
     lvgl_port_deinit();
+}
+
+void OledDisplay::SetupFriendlyFace() {
+    // Zhi uses the whole OLED for its face. Status is conveyed through expression;
+    // exceptional conditions temporarily replace the face with a large icon.
+    lv_obj_add_flag(top_bar_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(status_bar_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_height(content_, LV_VER_RES);
+    lv_obj_add_flag(emotion_label_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(content_right_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_size(content_left_, LV_HOR_RES, LV_VER_RES);
+    lv_obj_set_style_bg_color(content_left_, lv_color_white(), 0);
+
+    auto make_feature = [this](int width, int height, int x, int y, int radius) {
+        lv_obj_t* feature = lv_obj_create(content_left_);
+        lv_obj_set_size(feature, width, height);
+        lv_obj_set_pos(feature, x, y);
+        lv_obj_set_style_pad_all(feature, 0, 0);
+        lv_obj_set_style_border_width(feature, 0, 0);
+        lv_obj_set_style_bg_color(feature, lv_color_black(), 0);
+        lv_obj_set_style_radius(feature, radius, 0);
+        lv_obj_set_scrollbar_mode(feature, LV_SCROLLBAR_MODE_OFF);
+        return feature;
+    };
+
+    // Rounded rectangles evoke Vector-like eyes without copying its exact artwork.
+    left_eye_ = make_feature(28, 23, 19, 9, 8);
+    right_eye_ = make_feature(28, 23, 81, 9, 8);
+    mouth_ = make_feature(24, 3, 52, 49, 2);
+    face_timer_ = lv_timer_create(FaceTimerCallback, 70, this);
+    UpdateFriendlyFace("neutral");
+}
+
+void OledDisplay::FaceTimerCallback(lv_timer_t* timer) {
+    auto self = static_cast<OledDisplay*>(lv_timer_get_user_data(timer));
+    if (self == nullptr || self->left_eye_ == nullptr) {
+        return;
+    }
+
+    self->face_tick_++;
+    if (lv_obj_has_flag(self->left_eye_, LV_OBJ_FLAG_HIDDEN)) {
+        return;
+    }
+
+    // Blinks have a short closing and opening phase. Between blinks the eyes
+    // ease toward the expression targets instead of snapping to a fixed shape.
+    if (self->face_tick_ >= self->next_blink_tick_ && self->blink_phase_ == 0) {
+        self->blink_phase_ = 1;
+    }
+    int desired_height = self->eye_height_target_;
+    int desired_y = self->eye_y_target_;
+    int left_x = self->left_eye_x_target_;
+    int right_x = self->right_eye_x_target_;
+
+    // Tiny state-dependent movements give the eyes intention without making
+    // the 128x64 face visually noisy.
+    if (self->face_mode_ == 1) { // listening
+        if (self->voice_active_) {
+            desired_height += ((self->face_tick_ / 3) % 2) ? 2 : 0;
+            desired_y -= 1;
+        }
+    } else if (self->face_mode_ == 2) { // thinking
+        const int glance = ((self->face_tick_ / 12) % 2) ? 4 : -2;
+        left_x += glance;
+        right_x += glance;
+        if ((self->face_tick_ / 9) % 3 == 0) {
+            desired_height -= 4;
+            desired_y += 2;
+        }
+    } else if (self->face_mode_ == 3) { // speaking
+        const uint8_t level = self->audio_level_.load(std::memory_order_relaxed);
+        desired_height -= level / 28;
+        desired_y += level / 55;
+    } else if (self->face_mode_ == 0) { // idle: an occasional gentle glance
+        const uint16_t idle_phase = self->face_tick_ % 150;
+        if (idle_phase > 115 && idle_phase < 135) {
+            left_x += 2;
+            right_x += 2;
+        }
+    }
+    if (self->blink_phase_ != 0) {
+        if (self->blink_phase_ <= 2) {
+            desired_height = 3;
+            desired_y = 20;
+        }
+        if (++self->blink_phase_ > 4) {
+            self->blink_phase_ = 0;
+            // Vary the interval deterministically so the face does not look robotic.
+            self->next_blink_tick_ = self->face_tick_ + 42 + ((self->face_tick_ * 13) % 46);
+        }
+    }
+
+    auto ease = [](int current, int target, int step) {
+        if (current < target) return std::min(current + step, target);
+        if (current > target) return std::max(current - step, target);
+        return current;
+    };
+    self->eye_width_current_ = ease(self->eye_width_current_, self->eye_width_target_, 2);
+    self->eye_height_current_ = ease(self->eye_height_current_, desired_height, 5);
+    self->eye_y_current_ = ease(self->eye_y_current_, desired_y, 3);
+    self->left_eye_x_current_ = ease(self->left_eye_x_current_, left_x, 1);
+    self->right_eye_x_current_ = ease(self->right_eye_x_current_, right_x, 1);
+    int left_height = self->eye_height_current_;
+    int right_height = self->eye_height_current_;
+    int left_y = self->eye_y_current_;
+    int right_y = self->eye_y_current_;
+    if (self->blink_phase_ == 0) {
+        if (self->face_mode_ == 2) {
+            // A raised/squinted eye reads as curiosity on a tiny monochrome face.
+            right_height = std::max(8, right_height - 7);
+            right_y += 4;
+        } else if (self->face_mode_ == 3) {
+            // Asymmetric micro-squints keep speech from looking like a static mask.
+            if ((self->face_tick_ / 3) % 2) {
+                left_height = std::max(10, left_height - 2);
+                left_y += 1;
+            } else {
+                right_height = std::max(10, right_height - 2);
+                right_y += 1;
+            }
+        } else if (self->face_mode_ == 0 && (self->face_tick_ % 190) > 168) {
+            left_height = std::max(12, left_height - 4);
+            left_y += 2;
+        }
+    }
+    lv_obj_set_size(self->left_eye_, self->eye_width_current_, left_height);
+    lv_obj_set_size(self->right_eye_, self->eye_width_current_, right_height);
+    lv_obj_set_pos(self->left_eye_, self->left_eye_x_current_, left_y);
+    lv_obj_set_pos(self->right_eye_, self->right_eye_x_current_, right_y);
+
+    // Mouth motion is gated by actual PCM packets sent to Xi's speaker, never
+    // by the logical conversation state. Microphone activity cannot trigger it.
+    const uint32_t packet_counter = self->audio_packet_counter_.load(std::memory_order_relaxed);
+    if (packet_counter != self->last_audio_packet_counter_) {
+        self->last_audio_packet_counter_ = packet_counter;
+        self->audio_silence_ticks_ = 0;
+    } else if (self->audio_silence_ticks_ < 255) {
+        self->audio_silence_ticks_++;
+    }
+    const uint8_t incoming = self->audio_level_.exchange(0, std::memory_order_relaxed);
+    if (self->audio_silence_ticks_ <= 2) {
+        // Consume the loudest packet received since the last frame. Attack is
+        // immediate; release is deliberately slower so syllables remain visible.
+        if (incoming > self->mouth_level_current_) {
+            self->mouth_level_current_ = incoming;
+        } else {
+            self->mouth_level_current_ = self->mouth_level_current_ > 8
+                ? self->mouth_level_current_ - 8 : 0;
+        }
+        const uint8_t level = self->mouth_level_current_;
+        if (level < 5) {
+            lv_obj_set_size(self->mouth_, 20, 2);
+            lv_obj_set_pos(self->mouth_, 54, 51);
+            lv_obj_set_style_radius(self->mouth_, 1, 0);
+        } else {
+            // Alternate wide and rounded visemes while amplitude controls size.
+            int width = 10 + level * 22 / 100;
+            int height = 4 + level * 13 / 100;
+            if ((self->face_tick_ / 2) % 3 == 0) {
+                width = std::max(8, width - 7);
+                height = std::min(18, height + 3);
+            }
+            lv_obj_set_size(self->mouth_, width, height);
+            lv_obj_set_pos(self->mouth_, (128 - width) / 2, 57 - height);
+            lv_obj_set_style_radius(self->mouth_, height / 2, 0);
+        }
+    } else {
+        self->mouth_level_current_ = 0;
+        // Rest/listen mouth: intentionally quiet, short and delicate.
+        const int rest_width = self->face_mode_ == 1 ? 12 : 16;
+        lv_obj_set_size(self->mouth_, rest_width, 2);
+        lv_obj_set_pos(self->mouth_, (128 - rest_width) / 2, 51);
+        lv_obj_set_style_radius(self->mouth_, 1, 0);
+    }
+}
+
+void OledDisplay::SetAudioLevel(uint8_t level) {
+    if (friendly_face_) {
+        // Peak hold: a trailing quiet packet must not erase a vowel peak before
+        // the 70 ms face timer has had a chance to display it.
+        uint8_t current = audio_level_.load(std::memory_order_relaxed);
+        while (level > current && !audio_level_.compare_exchange_weak(
+            current, level, std::memory_order_relaxed)) {
+        }
+        audio_packet_counter_.fetch_add(1, std::memory_order_relaxed);
+    }
+}
+
+void OledDisplay::SetVoiceActivity(bool active) {
+    if (!friendly_face_) {
+        return;
+    }
+    DisplayLockGuard lock(this);
+    voice_active_ = active;
+    if (face_mode_ == 1) {
+        eye_width_target_ = active ? 32 : 30;
+        eye_height_target_ = active ? 30 : 28;
+        left_eye_x_target_ = active ? 14 : 16;
+        right_eye_x_target_ = 82;
+    }
+}
+
+bool OledDisplay::IsFriendlyExpression(const char* expression) {
+    static const char* expressions[] = {
+        "neutral", "happy", "laughing", "funny", "sad", "angry", "crying",
+        "loving", "embarrassed", "surprised", "shocked", "thinking", "winking",
+        "cool", "relaxed", "delicious", "kissy", "confident", "sleepy", "silly",
+        "confused", "listening", "listening_active", "speaking", "connecting", "microchip_ai"
+    };
+    for (const char* known : expressions) {
+        if (strcmp(expression, known) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void OledDisplay::ShowFriendlyFace() {
+    lv_obj_add_flag(emotion_label_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_remove_flag(left_eye_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_remove_flag(right_eye_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_remove_flag(mouth_, LV_OBJ_FLAG_HIDDEN);
+}
+
+void OledDisplay::ShowProblemIcon(const char* icon) {
+    const char* utf8 = font_awesome_get_utf8(icon);
+    if (utf8 == nullptr) {
+        utf8 = FONT_AWESOME_TRIANGLE_EXCLAMATION;
+    }
+    speaking_ = false;
+    lv_obj_add_flag(left_eye_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(right_eye_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(mouth_, LV_OBJ_FLAG_HIDDEN);
+    lv_label_set_text(emotion_label_, utf8);
+    lv_obj_set_style_text_font(emotion_label_,
+        static_cast<LvglTheme*>(current_theme_)->large_icon_font()->font(), 0);
+    lv_obj_center(emotion_label_);
+    lv_obj_remove_flag(emotion_label_, LV_OBJ_FLAG_HIDDEN);
+}
+
+void OledDisplay::UpdateFriendlyFace(const char* expression) {
+    if (!friendly_face_ || left_eye_ == nullptr || expression == nullptr) {
+        return;
+    }
+
+    ShowFriendlyFace();
+    speaking_ = strcmp(expression, "speaking") == 0;
+    face_mode_ = 0;
+    int eye_width = 28;
+    int eye_height = 23;
+    int left_x = 19;
+    int right_x = 81;
+    int mouth_width = 16;
+    int mouth_height = 2;
+    int mouth_x = 56;
+    int mouth_y = 51;
+
+    if (strcmp(expression, "listening") == 0) {
+        face_mode_ = 1;
+        eye_width = 30;
+        eye_height = 28;
+        left_x = 16;
+        right_x = 82;
+        mouth_width = 12;
+        mouth_height = 2;
+        mouth_x = 58;
+        mouth_y = 51;
+    } else if (strcmp(expression, "listening_active") == 0) {
+        face_mode_ = 1;
+        voice_active_ = true;
+        eye_width = 32;
+        eye_height = 30;
+        left_x = 14;
+        right_x = 82;
+        mouth_width = 12;
+        mouth_height = 2;
+        mouth_x = 58;
+        mouth_y = 51;
+    } else if (strcmp(expression, "thinking") == 0) {
+        face_mode_ = 2;
+        eye_width = 28;
+        eye_height = 22;
+        left_x = 19;
+        right_x = 79;
+        mouth_width = 10;
+        mouth_height = 2;
+        mouth_x = 59;
+        mouth_y = 51;
+    } else if (strcmp(expression, "connecting") == 0) {
+        face_mode_ = 4;
+        eye_width = 22;
+        left_x = 22;
+        right_x = 84;
+        mouth_width = 24;
+        mouth_x = 52;
+    } else if (strcmp(expression, "sleepy") == 0) {
+        eye_height = 4;
+        mouth_width = 20;
+        mouth_x = 54;
+    } else if (speaking_) {
+        face_mode_ = 3;
+    }
+
+    eye_width_target_ = eye_width;
+    eye_height_target_ = eye_height;
+    eye_y_target_ = eye_height <= 4 ? 19 : 7;
+    left_eye_x_target_ = left_x;
+    right_eye_x_target_ = right_x;
+    lv_obj_set_size(mouth_, mouth_width, mouth_height);
+    lv_obj_set_pos(mouth_, mouth_x, mouth_y);
+    lv_obj_set_style_radius(left_eye_, 6, 0);
+    lv_obj_set_style_radius(right_eye_, 6, 0);
+}
+
+void OledDisplay::SetStatus(const char* status) {
+    LvglDisplay::SetStatus(status);
+    if (!friendly_face_ || status == nullptr) {
+        return;
+    }
+    if (strcmp(status, Lang::Strings::LISTENING) == 0) {
+        UpdateFriendlyFace("listening");
+    } else if (strcmp(status, Lang::Strings::SPEAKING) == 0) {
+        UpdateFriendlyFace("speaking");
+    } else if (strcmp(status, Lang::Strings::CONNECTING) == 0) {
+        UpdateFriendlyFace("connecting");
+    } else if (strcmp(status, Lang::Strings::STANDBY) == 0) {
+        UpdateFriendlyFace("neutral");
+    }
 }
 
 bool OledDisplay::Lock(int timeout_ms) {
@@ -385,6 +720,15 @@ void OledDisplay::SetupUI_128x32() {
 }
 
 void OledDisplay::SetEmotion(const char* emotion) {
+    if (friendly_face_) {
+        DisplayLockGuard lock(this);
+        if (emotion != nullptr && IsFriendlyExpression(emotion)) {
+            UpdateFriendlyFace(emotion);
+        } else {
+            ShowProblemIcon(emotion);
+        }
+        return;
+    }
     const char* utf8 = font_awesome_get_utf8(emotion);
     DisplayLockGuard lock(this);
     if (emotion_label_ == nullptr) {

@@ -1,4 +1,6 @@
 #include "audio_service.h"
+#include "board.h"
+#include "display/display.h"
 #include <esp_log.h>
 #include <cstring>
 
@@ -306,6 +308,22 @@ void AudioService::AudioOutputTask() {
             codec_->EnableOutput(true);
         }
 
+        // Drive expressive displays from the actual PCM energy sent to the speaker.
+        // Peak amplitude preserves short consonants and vowel attacks that a mean
+        // value smoothed away on the small OLED mouth animation.
+        uint32_t peak = 0;
+        for (int16_t sample : task->pcm) {
+            uint32_t magnitude = sample < 0 ? -static_cast<int32_t>(sample) : sample;
+            if (magnitude > peak) {
+                peak = magnitude;
+            }
+        }
+        // The small speaker uses relatively modest PCM amplitudes. A sensitive
+        // envelope preserves normal syllables instead of reacting only to peaks.
+        // Map the modest amplifier PCM range to the full facial envelope. The
+        // display performs peak-hold and release smoothing.
+        uint8_t level = static_cast<uint8_t>(std::min<uint32_t>(100, peak / 12));
+        Board::GetInstance().GetDisplay()->SetAudioLevel(level);
         codec_->OutputData(task->pcm);
 
         /* Update the last output time */
