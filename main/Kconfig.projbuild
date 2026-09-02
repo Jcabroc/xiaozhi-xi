@@ -156,6 +156,9 @@ choice BOARD_TYPE
     config BOARD_TYPE_JROBOT_S3
         bool "jRobot S3 / Kira Core S3"
         depends on IDF_TARGET_ESP32S3
+    config BOARD_TYPE_JROBOT_S3_XI_BODY
+        bool "jRobot S3 Xi Body v2"
+        depends on IDF_TARGET_ESP32S3
     config BOARD_TYPE_BREAD_COMPACT_WIFI_LCD
         bool "Bread Compact WiFi + LCD (面包板)"
         depends on IDF_TARGET_ESP32S3
