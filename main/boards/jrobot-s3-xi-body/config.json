@@ -8,6 +8,14 @@
                 "CONFIG_BOARD_TYPE_JROBOT_S3_XI_BODY=y",
                 "CONFIG_LANGUAGE_ES_ES=y"
             ]
+        },
+        {
+            "name": "jrobot-s3-xi-body-diagnostic",
+            "sdkconfig_append": [
+                "CONFIG_BOARD_TYPE_JROBOT_S3_XI_BODY=y",
+                "CONFIG_LANGUAGE_ES_ES=y",
+                "CONFIG_XI_BODY_DIAGNOSTIC=y"
+            ]
         }
     ]
 }

@@ -1,13 +1,14 @@
 # jRobot S3 Xi Body v2
 
-This isolated ESP32-S3 N16R8 variant is based on `jrobot-s3`. It preserves its direct I2S audio mapping and BOOT/push-to-talk behavior, while reserving Xi Body v2 hardware. `jrobot-s3` is not modified.
+Perfil aislado ESP32-S3 N16R8 para Xi Body. Su pinout confirmado está en [`docs/xi-body/pinout.md`](../../../docs/xi-body/pinout.md). El perfil normal inicializa la pantalla GC9A01 240×240 y mantiene el WS2812 integrado como LED de estado.
 
-The 128x160 SPI display controller is **pending confirmation**. Therefore this initial firmware configures the SPI bus but intentionally uses `NoDisplay`; it does not send commands to an unknown panel. PCA9685 servo channels are declared with disabled safety limits and are never initialized or moved.
+El botón PTT GPIO47 está configurado, pero aún falta instalar/soldar. El RGB externo usa GPIO16/17/21; confirma la polaridad de su terminal común antes de probar colores. El perfil hermano `jrobot-s3` no se modifica.
 
-Build from the repository root:
+Compilaciones desde la raíz:
 
-```sh
+```powershell
 python scripts/release.py jrobot-s3-xi-body --name jrobot-s3-xi-body
+python scripts/release.py jrobot-s3-xi-body --name jrobot-s3-xi-body-diagnostic
 ```
 
-See [`docs/xi-body/`](../../../docs/xi-body/) for wiring, architecture, and staged integration.
+El perfil diagnóstico muestra un aviso en pantalla, reproduce un sonido y sondea el MPU-6050. T1/T2 solo reportan toque/liberación por consola en ambos perfiles; no controlan la conversación. La prueba RGB está desactivada hasta confirmar la polaridad del LED externo. Para probar micrófono y parlante usa el servicio de audio después de instalar el botón PTT. Ver [`docs/xi-body/integration-checklist.md`](../../../docs/xi-body/integration-checklist.md).

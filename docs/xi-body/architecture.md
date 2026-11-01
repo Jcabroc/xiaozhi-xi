@@ -1,20 +1,23 @@
-# Xi Body v2 architecture and integration plan
+# Xi Body v2: arquitectura de integración
 
-The board layer owns pin assignments and bus setup. The existing core continues to own Wi-Fi, activation, audio service, and device state. The new variant currently keeps the original direct-I2S audio wiring and BOOT behavior.
+La asignación de pines vive únicamente en `main/boards/jrobot-s3-xi-body/config.h`; el perfil `jrobot-s3` y el repositorio `xiaozhi-esp32-server` no forman parte de este hardware.
 
-## Safety boundary
+## Perfil normal
 
-- TFT: SPI bus only; no display driver is selected until the exact controller is confirmed.
-- Servos: PCA9685 is reserved at I2C `0x40`; all six software limits are disabled. No startup motion and no PWM output occur.
-- IMU: reserved at I2C `0x68`; no probe or polling occurs.
-- Battery: GPIO10 is reserved only; divider values must be known before enabling a monitor.
-- Touch: GPIO1/2/3/11 are reserves, not native ESP32-S3 touch inputs.
+- GC9A01 240×240 mediante el controlador `esp_lcd_gc9a01`, SPI2 y sin señal de BL.
+- Audio I2S full-duplex compartido: BCLK/SCK 4, LRCK/WS 5, micrófono SD 6 y parlante DIN 7.
+- I2C SDA8/SCL9 disponible para MPU-6050; dirección esperada `0x68`.
+- GPIO1/2 reservados para touch capacitivo nativo ESP32-S3.
+- WS2812 integrado en GPIO48 conserva el indicador de estado. RGB externo está en GPIO16/17/21.
+- PTT preparado en GPIO47; falta montar el botón entre GPIO47 y GND.
 
-## Planned stages
+## Perfil diagnóstico
 
-1. Confirm TFT controller, orientation, offsets, and backlight polarity; enable the matching panel driver.
-2. Choose and wire a compatible touch solution; integrate one input as a listening trigger.
-3. Verify PCA9685 power, common ground, and one servo’s mechanical limits; explicitly enable only that channel.
-4. Calibrate and enable the remaining five servos one at a time.
-5. Add IMU, PIR, and battery sampling with debouncing/filtering.
-6. Map `XiFaceState` values to the black-and-green face renderer and confirmed RGB hardware.
+T1/T2 solo registran por consola los cambios de toque/liberación en los perfiles normal y diagnóstico; no cambian el estado de conversación. `jrobot-s3-xi-body-diagnostic` muestra un aviso en la pantalla, reproduce un aviso corto por el parlante y lee el acelerómetro MPU-6050. La prueba RGB externa está desactivada; solo se puede habilitar con `XI_BODY_RGB_DIAGNOSTIC` después de confirmar terminal común y polaridad. GPIO47 permanece preparado como PTT físico y todavía falta soldar su botón.
+
+## Límites conocidos
+
+- No reservar GPIO10 para batería: ahora es CS de GC9A01.
+- No inicializar PIR GPIO18 ni PCA9685; sus etapas permanecen fuera de esta variante.
+- La polaridad/terminal común del RGB externo no aparece en el mapa de montaje. El código inicia en activo alto; `RGB_LED_ACTIVE_LOW` permite cambiar a activo bajo si el hardware es ánodo común.
+- La auditoría del modelo semántico de expresiones para OLED, GC9A01 y TFT verde se abordará después; esta integración usa la pantalla estándar y no rediseña ese modelo compartido.

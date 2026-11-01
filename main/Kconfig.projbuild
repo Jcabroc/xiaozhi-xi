@@ -159,6 +159,7 @@ choice BOARD_TYPE
     config BOARD_TYPE_JROBOT_S3_XI_BODY
         bool "jRobot S3 Xi Body v2"
         depends on IDF_TARGET_ESP32S3
+
     config BOARD_TYPE_BREAD_COMPACT_WIFI_LCD
         bool "Bread Compact WiFi + LCD (面包板)"
         depends on IDF_TARGET_ESP32S3
@@ -622,6 +623,20 @@ choice BOARD_TYPE
         bool "NULLLAB-AI-VOX3"
         depends on IDF_TARGET_ESP32S3
 endchoice
+
+config XI_BODY_DIAGNOSTIC
+    bool "Xi Body hardware diagnostic build"
+    depends on BOARD_TYPE_JROBOT_S3_XI_BODY
+    default n
+    help
+        Build the Xi Body diagnostic firmware profile instead of the normal profile.
+
+config XI_BODY_RGB_DIAGNOSTIC
+    bool "Enable external RGB test after polarity confirmation"
+    depends on XI_BODY_DIAGNOSTIC
+    default n
+    help
+        Enables GPIO16/17/21 test outputs. Leave disabled until the RGB LED common pin and polarity are confirmed.
 
 choice XIAOZHI_ETH_BOARD_TYPE
     prompt "Board Type"
