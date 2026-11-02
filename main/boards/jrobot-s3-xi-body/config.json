@@ -6,7 +6,9 @@
             "name": "jrobot-s3-xi-body",
             "sdkconfig_append": [
                 "CONFIG_BOARD_TYPE_JROBOT_S3_XI_BODY=y",
-                "CONFIG_LANGUAGE_ES_ES=y"
+                "CONFIG_LANGUAGE_ES_ES=y",
+                "CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y",
+                "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions/v2/4m.csv\""
             ]
         },
         {
@@ -14,7 +16,9 @@
             "sdkconfig_append": [
                 "CONFIG_BOARD_TYPE_JROBOT_S3_XI_BODY=y",
                 "CONFIG_LANGUAGE_ES_ES=y",
-                "CONFIG_XI_BODY_DIAGNOSTIC=y"
+                "CONFIG_XI_BODY_DIAGNOSTIC=y",
+                "CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y",
+                "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions/v2/4m.csv\""
             ]
         }
     ]

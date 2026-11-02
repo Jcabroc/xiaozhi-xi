@@ -1,6 +1,6 @@
 # jRobot S3 Xi Body v2
 
-Perfil aislado ESP32-S3 N16R8 para Xi Body. Su pinout confirmado está en [`docs/xi-body/pinout.md`](../../../docs/xi-body/pinout.md). El perfil normal inicializa la pantalla GC9A01 240×240 y mantiene el WS2812 integrado como LED de estado.
+Perfil aislado ESP32-S3 para Xi Body. La placa conectada durante la prueba reportó 4 MB de flash y 2 MB de PSRAM; ambos builds usan la tabla de particiones de 4 MB. Su pinout confirmado está en [`docs/xi-body/pinout.md`](../../../docs/xi-body/pinout.md). El perfil normal inicializa la pantalla GC9A01 240×240 y mantiene el WS2812 integrado como LED de estado.
 
 El botón PTT GPIO47 está configurado, pero aún falta instalar/soldar. El RGB externo usa GPIO16/17/21; confirma la polaridad de su terminal común antes de probar colores. El perfil hermano `jrobot-s3` no se modifica.
 
