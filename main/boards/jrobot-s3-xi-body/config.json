@@ -1,25 +1,27 @@
 {
-    "type": "jrobot-s3-xi-body",
-    "target": "esp32s3",
-    "builds": [
-        {
-            "name": "jrobot-s3-xi-body",
-            "sdkconfig_append": [
-                "CONFIG_BOARD_TYPE_JROBOT_S3_XI_BODY=y",
-                "CONFIG_LANGUAGE_ES_ES=y",
-                "CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y",
-                "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions/v2/4m.csv\""
-            ]
-        },
-        {
-            "name": "jrobot-s3-xi-body-diagnostic",
-            "sdkconfig_append": [
-                "CONFIG_BOARD_TYPE_JROBOT_S3_XI_BODY=y",
-                "CONFIG_LANGUAGE_ES_ES=y",
-                "CONFIG_XI_BODY_DIAGNOSTIC=y",
-                "CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y",
-                "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions/v2/4m.csv\""
-            ]
-        }
-    ]
+  "type": "jrobot-s3-xi-body",
+  "target": "esp32s3",
+  "builds": [
+    {
+      "name": "jrobot-s3-xi-body",
+      "sdkconfig_append": [
+        "CONFIG_BOARD_TYPE_JROBOT_S3_XI_BODY=y",
+        "CONFIG_LANGUAGE_ES_ES=y",
+        "CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y",
+        "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions/v2/4m.csv\"",
+        "CONFIG_SPIRAM_MODE_QUAD=y"
+      ]
+    },
+    {
+      "name": "jrobot-s3-xi-body-diagnostic",
+      "sdkconfig_append": [
+        "CONFIG_BOARD_TYPE_JROBOT_S3_XI_BODY=y",
+        "CONFIG_LANGUAGE_ES_ES=y",
+        "CONFIG_XI_BODY_DIAGNOSTIC=y",
+        "CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y",
+        "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions/v2/4m.csv\"",
+        "CONFIG_SPIRAM_MODE_QUAD=y"
+      ]
+    }
+  ]
 }
