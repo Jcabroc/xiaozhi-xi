@@ -22,6 +22,9 @@
 #if CONFIG_XI_BODY_PHYSICAL_INTERACTIONS
 #include "physical_interactions.h"
 #endif
+#if CONFIG_XI_BODY_PHYSICAL_REACTION_AUDIO
+#include "physical_reaction_audio.h"
+#endif
 
 #define TAG "XiBodyV2"
 
@@ -32,6 +35,9 @@ private:
     Button boot_button_;
 #if CONFIG_XI_BODY_PHYSICAL_INTERACTIONS
     std::unique_ptr<PhysicalInteractions> physical_interactions_;
+#endif
+#if CONFIG_XI_BODY_PHYSICAL_REACTION_AUDIO
+    PhysicalReactionAudio physical_reaction_audio_;
 #endif
 
     void InitializeGc9a01Display() {
@@ -90,13 +96,24 @@ private:
 
     void InitializePhysicalInteractions() {
 #if CONFIG_XI_BODY_PHYSICAL_INTERACTIONS
+#if CONFIG_XI_BODY_PHYSICAL_REACTION_AUDIO
+        if (!physical_reaction_audio_.Start()) {
+            ESP_LOGE(TAG, "Failed to start physical reaction audio worker");
+        }
+#endif
         physical_interactions_ = std::make_unique<PhysicalInteractions>(i2c_bus_);
-        if (!physical_interactions_->Start([](PhysicalInteractionEvent event) {
+        if (!physical_interactions_->Start([this](PhysicalInteractionEvent event) {
                 ESP_LOGI(TAG, "Physical event: %s", PhysicalInteractionEventName(event));
                 if (event == PhysicalInteractionEvent::kTouch1Short) {
                     // A FreeRTOS event bit coalesces repeats and is checked by XiaoZhi's main task.
                     Application::GetInstance().StartListeningIfIdle();
                 }
+#if CONFIG_XI_BODY_PHYSICAL_REACTION_AUDIO
+                else {
+                    // Bounded queue; audio is produced only by the dedicated low-priority worker.
+                    physical_reaction_audio_.Queue(event);
+                }
+#endif
             })) {
             ESP_LOGE(TAG, "Failed to start physical interaction task");
         }

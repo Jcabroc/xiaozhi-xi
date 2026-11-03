@@ -5,6 +5,8 @@
 #include <deque>
 #include <condition_variable>
 #include <chrono>
+#include <atomic>
+#include <functional>
 #include <mutex>
 
 #include <freertos/FreeRTOS.h>
@@ -93,6 +95,7 @@ struct AudioTask {
     AudioTaskType type;
     std::vector<int16_t> pcm;
     uint32_t timestamp;
+    uint32_t local_sound_generation = 0;
 };
 
 struct DebugStatistics {
@@ -115,6 +118,9 @@ public:
     const std::string& GetLastWakeWord() const;
     bool IsVoiceDetected() const { return voice_detected_; }
     bool IsIdle();
+    bool CanPlayLocalSound();
+    bool PlayLocalSoundWhenIdle(const std::string_view& sound, const std::function<bool()>& may_continue);
+    void CancelLocalSound();
     void WaitForPlaybackQueueEmpty();
     bool IsWakeWordRunning() const { return xEventGroupGetBits(event_group_) & AS_EVENT_WAKE_WORD_RUNNING; }
     bool IsAudioProcessorRunning() const { return xEventGroupGetBits(event_group_) & AS_EVENT_AUDIO_PROCESSOR_RUNNING; }
@@ -165,12 +171,19 @@ private:
     TaskHandle_t audio_output_task_handle_ = nullptr;
     TaskHandle_t opus_codec_task_handle_ = nullptr;
     std::mutex audio_queue_mutex_;
+    std::mutex local_sound_mutex_;
     std::condition_variable audio_queue_cv_;
     std::deque<std::unique_ptr<AudioStreamPacket>> audio_decode_queue_;
     std::deque<std::unique_ptr<AudioStreamPacket>> audio_send_queue_;
     std::deque<std::unique_ptr<AudioStreamPacket>> audio_testing_queue_;
     std::deque<std::unique_ptr<AudioTask>> audio_encode_queue_;
     std::deque<std::unique_ptr<AudioTask>> audio_playback_queue_;
+    bool local_sound_active_ = false;
+    bool audio_decode_active_ = false;
+    uint32_t active_decode_local_generation_ = 0;
+    bool audio_output_active_ = false;
+    uint32_t active_output_local_generation_ = 0;
+    std::atomic<uint32_t> local_sound_generation_{1};
     // For server AEC
     std::deque<uint32_t> timestamp_queue_;
 
@@ -190,6 +203,8 @@ private:
     void PushTaskToEncodeQueue(AudioTaskType type, std::vector<int16_t>&& pcm);
     void SetDecodeSampleRate(int sample_rate, int frame_duration);
     void CheckAndUpdateAudioPowerState();
+    bool IsIdleLocked() const;
+    void CancelLocalSoundLocked();
 };
 
 #endif

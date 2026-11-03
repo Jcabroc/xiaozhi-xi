@@ -897,6 +897,9 @@ list(APPEND SOURCES ${BOARD_SOURCES})
 if(CONFIG_XI_BODY_PHYSICAL_INTERACTIONS)
     list(APPEND SOURCES "boards/jrobot-s3-xi-body/physical_interactions.cc")
 endif()
+if(CONFIG_XI_BODY_PHYSICAL_REACTION_AUDIO)
+    list(APPEND SOURCES "boards/jrobot-s3-xi-body/physical_reaction_audio.cc")
+endif()
 
 # Select audio processor according to Kconfig
 if(CONFIG_USE_AUDIO_PROCESSOR)
@@ -1024,6 +1027,20 @@ endif()
 
 file(GLOB COMMON_SOUNDS ${CMAKE_CURRENT_SOURCE_DIR}/assets/common/*.ogg)
 
+# Optional voice clips belong to the selected language and this board profile only.
+set(XI_BODY_REACTION_SOUND_FILES "")
+if(BOARD_TYPE STREQUAL "jrobot-s3-xi-body" AND CONFIG_XI_BODY_PHYSICAL_REACTION_AUDIO)
+    foreach(XI_BODY_REACTION_CLIP xi_t2_laugh xi_imu_shake)
+        set(XI_BODY_REACTION_PATH "${CMAKE_CURRENT_SOURCE_DIR}/assets/locales/${LANG_DIR}/${XI_BODY_REACTION_CLIP}.ogg")
+        if(EXISTS "${XI_BODY_REACTION_PATH}")
+            list(FIND LANG_SOUNDS "${XI_BODY_REACTION_PATH}" XI_BODY_REACTION_SOUND_INDEX)
+            if(XI_BODY_REACTION_SOUND_INDEX EQUAL -1)
+                list(APPEND LANG_SOUNDS "${XI_BODY_REACTION_PATH}")
+            endif()
+            list(APPEND XI_BODY_REACTION_SOUND_FILES "${XI_BODY_REACTION_CLIP}")
+        endif()
+    endforeach()
+endif()
 # If target chip is ESP32, exclude specific files to avoid build errors
 if(CONFIG_IDF_TARGET_ESP32)
     list(REMOVE_ITEM SOURCES "audio/codecs/box_audio_codec.cc"
@@ -1099,6 +1116,11 @@ target_compile_definitions(${COMPONENT_LIB}
                     PRIVATE BUILTIN_TEXT_FONT=${BUILTIN_TEXT_FONT} BUILTIN_ICON_FONT=${BUILTIN_ICON_FONT}
                     )
 
+foreach(XI_BODY_REACTION_CLIP ${XI_BODY_REACTION_SOUND_FILES})
+    string(TOUPPER "${XI_BODY_REACTION_CLIP}" XI_BODY_REACTION_CLIP_UPPER)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE "XI_BODY_HAS_${XI_BODY_REACTION_CLIP_UPPER}=1")
+endforeach()
+
 # Add generation rules
 add_custom_command(
     OUTPUT ${LANG_HEADER}
@@ -1107,6 +1129,7 @@ add_custom_command(
             --output "${LANG_HEADER}"
     DEPENDS
         ${LANG_JSON}
+        ${LANG_SOUNDS}
         ${PROJECT_DIR}/scripts/gen_lang.py
     COMMENT "Generating ${LANG_DIR} language config"
 )

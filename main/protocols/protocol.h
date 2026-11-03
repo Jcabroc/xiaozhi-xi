@@ -11,6 +11,9 @@ struct AudioStreamPacket {
     int sample_rate = 0;
     int frame_duration = 0;
     uint32_t timestamp = 0;
+    // Non-zero only for cancellable firmware-local sound packets. Protocol
+    // serializers intentionally ignore this field.
+    uint32_t local_sound_generation = 0;
     std::vector<uint8_t> payload;
 };
 
