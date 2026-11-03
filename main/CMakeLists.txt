@@ -893,6 +893,15 @@ else()
 endif()
 list(APPEND SOURCES ${BOARD_SOURCES})
 
+# Lumi Face Engine is exclusive to the normal Xi Body profile. The diagnostic
+# profile keeps its existing display path unchanged.
+if(CONFIG_BOARD_TYPE_JROBOT_S3_XI_BODY AND NOT CONFIG_XI_BODY_DIAGNOSTIC)
+    list(APPEND SOURCES
+        "boards/jrobot-s3-xi-body/face/lumi_face_engine.cc"
+        "boards/jrobot-s3-xi-body/face/xi_body_display.cc"
+    )
+endif()
+
 # Select audio processor according to Kconfig
 if(CONFIG_USE_AUDIO_PROCESSOR)
     list(APPEND SOURCES "audio/processors/afe_audio_processor.cc")

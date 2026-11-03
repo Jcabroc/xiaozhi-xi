@@ -18,6 +18,9 @@
 #include "wifi_board.h"
 #include "xi_body_peripherals.h"
 #include "assets/lang_config.h"
+#if !CONFIG_XI_BODY_DIAGNOSTIC
+#include "face/xi_body_display.h"
+#endif
 
 #define TAG "XiBodyV2"
 
@@ -46,7 +49,11 @@ private:
         ESP_ERROR_CHECK(esp_lcd_panel_init(panel));
         ESP_ERROR_CHECK(esp_lcd_panel_invert_color(panel, true));
         ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel, true));
+#if CONFIG_XI_BODY_DIAGNOSTIC
         display_ = new SpiLcdDisplay(io, panel, TFT_WIDTH, TFT_HEIGHT, 0, 0, false, false, false);
+#else
+        display_ = new XiBodyDisplay(io, panel, TFT_WIDTH, TFT_HEIGHT, 0, 0, false, false, false);
+#endif
     }
 
     void InitializeI2cReservation() {
