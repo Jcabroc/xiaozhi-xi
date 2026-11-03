@@ -638,6 +638,45 @@ config XI_BODY_RGB_DIAGNOSTIC
     help
         Enables GPIO16/17/21 test outputs. Leave disabled until the RGB LED common pin and polarity are confirmed.
 
+config XI_BODY_PHYSICAL_INTERACTIONS
+    bool "Enable Xi Body touch and motion events"
+    depends on BOARD_TYPE_JROBOT_S3_XI_BODY && !XI_BODY_DIAGNOSTIC
+    default y
+    help
+        Enables non-blocking touch and MPU-6050 event detection in the normal Xi Body profile.
+
+config XI_BODY_TOUCH_DELTA
+    int "Touch activation delta from baseline"
+    depends on XI_BODY_PHYSICAL_INTERACTIONS
+    range 20 1000
+    default 100
+    help
+        Raw touch delta used to detect GPIO1/GPIO2 touches. Calibrate for the actual board.
+
+config XI_BODY_SHAKE_THRESHOLD_MG
+    int "Shake activation threshold (mg)"
+    depends on XI_BODY_PHYSICAL_INTERACTIONS
+    range 150 2000
+    default 450
+    help
+        High-pass acceleration magnitude required to report a shake.
+
+config XI_BODY_SHAKE_RELEASE_MG
+    int "Shake release threshold (mg)"
+    depends on XI_BODY_PHYSICAL_INTERACTIONS
+    range 50 1500
+    default 250
+    help
+        Acceleration must fall below this threshold before another shake can be armed.
+
+config XI_BODY_SHAKE_COOLDOWN_MS
+    int "Shake cooldown (ms)"
+    depends on XI_BODY_PHYSICAL_INTERACTIONS
+    range 500 30000
+    default 3000
+    help
+        Minimum time between reported shakes.
+
 choice XIAOZHI_ETH_BOARD_TYPE
     prompt "Board Type"
     depends on XIAOZHI_NETWORK_ETHERNET

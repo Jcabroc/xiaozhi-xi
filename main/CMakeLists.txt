@@ -893,6 +893,11 @@ else()
 endif()
 list(APPEND SOURCES ${BOARD_SOURCES})
 
+# Physical Xi Body inputs are isolated to its normal profile and can be disabled in Kconfig.
+if(CONFIG_XI_BODY_PHYSICAL_INTERACTIONS)
+    list(APPEND SOURCES "boards/jrobot-s3-xi-body/physical_interactions.cc")
+endif()
+
 # Select audio processor according to Kconfig
 if(CONFIG_USE_AUDIO_PROCESSOR)
     list(APPEND SOURCES "audio/processors/afe_audio_processor.cc")

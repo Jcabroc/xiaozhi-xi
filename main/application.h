@@ -32,6 +32,7 @@
 #define MAIN_EVENT_START_LISTENING      (1 << 10)
 #define MAIN_EVENT_STOP_LISTENING       (1 << 11)
 #define MAIN_EVENT_STATE_CHANGED        (1 << 12)
+#define MAIN_EVENT_START_LISTENING_IF_IDLE (1 << 13)
 
 
 enum AecMode {
@@ -98,6 +99,9 @@ public:
      */
     void StartListening();
 
+    /** Request listening only if the application is idle; never interrupts active speech. */
+    void StartListeningIfIdle();
+
     /**
      * Stop listening (event-based, thread-safe)
      * Sends MAIN_EVENT_STOP_LISTENING to be handled in Run()
@@ -151,7 +155,7 @@ private:
     // Event handlers
     void HandleStateChangedEvent();
     void HandleToggleChatEvent();
-    void HandleStartListeningEvent();
+    void HandleStartListeningEvent(bool only_if_idle = false);
     void HandleStopListeningEvent();
     void HandleNetworkConnectedEvent();
     void HandleNetworkDisconnectedEvent();

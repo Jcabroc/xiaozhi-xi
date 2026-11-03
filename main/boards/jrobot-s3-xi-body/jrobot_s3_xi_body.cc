@@ -1,13 +1,14 @@
 #include <driver/gpio.h>
 #include <driver/i2c_master.h>
 #include <driver/spi_master.h>
-#include <driver/touch_pad.h>
 #include <esp_lcd_gc9a01.h>
 #include <esp_lcd_panel_io.h>
 #include <esp_lcd_panel_ops.h>
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+
+#include <memory>
 
 #include "application.h"
 #include "button.h"
@@ -18,6 +19,9 @@
 #include "wifi_board.h"
 #include "xi_body_peripherals.h"
 #include "assets/lang_config.h"
+#if CONFIG_XI_BODY_PHYSICAL_INTERACTIONS
+#include "physical_interactions.h"
+#endif
 
 #define TAG "XiBodyV2"
 
@@ -26,6 +30,9 @@ private:
     i2c_master_bus_handle_t i2c_bus_ = nullptr;
     Display* display_ = nullptr;
     Button boot_button_;
+#if CONFIG_XI_BODY_PHYSICAL_INTERACTIONS
+    std::unique_ptr<PhysicalInteractions> physical_interactions_;
+#endif
 
     void InitializeGc9a01Display() {
         spi_bus_config_t bus = GC9A01_PANEL_BUS_SPI_CONFIG(TFT_SCK_GPIO, TFT_MOSI_GPIO,
@@ -79,38 +86,21 @@ private:
             .intr_type = GPIO_INTR_DISABLE,
         };
         ESP_ERROR_CHECK(gpio_config(&pir_config));
-        // Touch monitoring runs in both Xi Body profiles.
     }
 
-    static void TouchMonitorTask(void*) {
-        esp_err_t result = touch_pad_init();
-        const touch_pad_t pads[] = {TOUCH_PAD_NUM1, TOUCH_PAD_NUM2};
-        if (result == ESP_OK) result = touch_pad_config(pads[0]);
-        if (result == ESP_OK) result = touch_pad_config(pads[1]);
-        if (result == ESP_OK) {
-            result = touch_pad_set_channel_mask(BIT(TOUCH_PAD_NUM1) | BIT(TOUCH_PAD_NUM2));
+    void InitializePhysicalInteractions() {
+#if CONFIG_XI_BODY_PHYSICAL_INTERACTIONS
+        physical_interactions_ = std::make_unique<PhysicalInteractions>(i2c_bus_);
+        if (!physical_interactions_->Start([](PhysicalInteractionEvent event) {
+                ESP_LOGI(TAG, "Physical event: %s", PhysicalInteractionEventName(event));
+                if (event == PhysicalInteractionEvent::kTouch1Short) {
+                    // A FreeRTOS event bit coalesces repeats and is checked by XiaoZhi's main task.
+                    Application::GetInstance().StartListeningIfIdle();
+                }
+            })) {
+            ESP_LOGE(TAG, "Failed to start physical interaction task");
         }
-        if (result == ESP_OK) result = touch_pad_fsm_start();
-        ESP_LOGI(TAG, "Touch monitor GPIO1/2: %s", result == ESP_OK ? "ready" : "failed");
-        if (result != ESP_OK) vTaskDelete(nullptr);
-
-        vTaskDelay(pdMS_TO_TICKS(250));
-        uint32_t baseline[2] = {0, 0};
-        bool touch_active[2] = {false, false};
-        for (int i = 0; i < 2; ++i) touch_pad_read_raw_data(pads[i], &baseline[i]);
-        while (true) {
-            for (int i = 0; i < 2; ++i) {
-                uint32_t value = 0;
-                if (touch_pad_read_raw_data(pads[i], &value) != ESP_OK) continue;
-                const bool active = value > baseline[i] + 100;
-                if (active == touch_active[i]) continue;
-                touch_active[i] = active;
-                ESP_LOGI(TAG, "T%d GPIO%d %s raw=%lu baseline=%lu", i + 1, i + 1,
-                         active ? "TOCADO" : "LIBRE", static_cast<unsigned long>(value),
-                         static_cast<unsigned long>(baseline[i]));
-            }
-            vTaskDelay(pdMS_TO_TICKS(50));
-        }
+#endif
     }
 
 #if CONFIG_XI_BODY_DIAGNOSTIC
@@ -191,8 +181,8 @@ public:
         InitializeI2cReservation();
         InitializeTftReservation();
         InitializeInputReservations();
+        InitializePhysicalInteractions();
         InitializeButtons();
-        xTaskCreate(TouchMonitorTask, "xi_body_touch", 3072, nullptr, 2, nullptr);
 #if CONFIG_XI_BODY_DIAGNOSTIC
         xTaskCreate(DiagnosticTask, "xi_body_diag", 4096, this, 2, nullptr);
 #endif
