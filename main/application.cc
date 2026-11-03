@@ -875,6 +875,13 @@ void Application::HandleStateChangedEvent() {
     DeviceState new_state = state_machine_.GetState();
     clock_ticks_ = 0;
 
+#if CONFIG_XI_BODY_PHYSICAL_REACTION_AUDIO
+    if (new_state != kDeviceStateIdle) {
+        // Drop queued/local reaction packets before conversation or another state takes audio.
+        audio_service_.CancelLocalSound();
+    }
+#endif
+
     auto& board = Board::GetInstance();
     auto display = board.GetDisplay();
     auto led = board.GetLed();

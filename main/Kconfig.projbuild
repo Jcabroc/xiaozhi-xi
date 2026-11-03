@@ -677,6 +677,21 @@ config XI_BODY_SHAKE_COOLDOWN_MS
     help
         Minimum time between reported shakes.
 
+config XI_BODY_PHYSICAL_REACTION_AUDIO
+    bool "Enable queued local sound reactions"
+    depends on XI_BODY_PHYSICAL_INTERACTIONS && BOARD_TYPE_JROBOT_S3_XI_BODY && !XI_BODY_DIAGNOSTIC
+    default y
+    help
+        Enables serialized T2 and MPU-6050 local OGG reactions when matching locale clips exist.
+
+config XI_BODY_PHYSICAL_REACTION_COOLDOWN_MS
+    int "Minimum interval between physical reaction sounds (ms)"
+    depends on XI_BODY_PHYSICAL_REACTION_AUDIO
+    range 1000 30000
+    default 2500
+    help
+        Limits the rate of locally played physical reactions.
+
 choice XIAOZHI_ETH_BOARD_TYPE
     prompt "Board Type"
     depends on XIAOZHI_NETWORK_ETHERNET
