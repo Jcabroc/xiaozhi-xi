@@ -900,6 +900,9 @@ if(CONFIG_BOARD_TYPE_JROBOT_S3_XI_BODY AND NOT CONFIG_XI_BODY_DIAGNOSTIC)
         "boards/jrobot-s3-xi-body/face/lumi_face_engine.cc"
         "boards/jrobot-s3-xi-body/face/xi_body_display.cc"
     )
+# Physical Xi Body inputs are isolated to its normal profile and can be disabled in Kconfig.
+if(CONFIG_XI_BODY_PHYSICAL_INTERACTIONS)
+    list(APPEND SOURCES "boards/jrobot-s3-xi-body/physical_interactions.cc")
 endif()
 
 # Select audio processor according to Kconfig

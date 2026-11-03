@@ -178,6 +178,7 @@ void Application::Run() {
         MAIN_EVENT_TOGGLE_CHAT |
         MAIN_EVENT_START_LISTENING |
         MAIN_EVENT_STOP_LISTENING |
+        MAIN_EVENT_START_LISTENING_IF_IDLE |
         MAIN_EVENT_ACTIVATION_DONE |
         MAIN_EVENT_STATE_CHANGED;
 
@@ -211,6 +212,10 @@ void Application::Run() {
 
         if (bits & MAIN_EVENT_START_LISTENING) {
             HandleStartListeningEvent();
+        }
+
+        if (bits & MAIN_EVENT_START_LISTENING_IF_IDLE) {
+            HandleStartListeningEvent(true);
         }
 
         if (bits & MAIN_EVENT_STOP_LISTENING) {
@@ -669,6 +674,10 @@ void Application::StartListening() {
     xEventGroupSetBits(event_group_, MAIN_EVENT_START_LISTENING);
 }
 
+void Application::StartListeningIfIdle() {
+    xEventGroupSetBits(event_group_, MAIN_EVENT_START_LISTENING_IF_IDLE);
+}
+
 void Application::StopListening() {
     xEventGroupSetBits(event_group_, MAIN_EVENT_STOP_LISTENING);
 }
@@ -731,8 +740,11 @@ void Application::ContinueOpenAudioChannel(ListeningMode mode) {
     SetListeningMode(mode);
 }
 
-void Application::HandleStartListeningEvent() {
+void Application::HandleStartListeningEvent(bool only_if_idle) {
     auto state = GetDeviceState();
+    if (only_if_idle && state != kDeviceStateIdle) {
+        return;
+    }
     
     if (state == kDeviceStateActivating) {
         SetDeviceState(kDeviceStateIdle);
