@@ -158,13 +158,31 @@ void PhysicalInteractions::PollTouch(uint32_t now_ms) {
             channel.active = channel.candidate;
             if (channel.active) {
                 channel.press_started_ms = now_ms;
+                if (index == 1) {
+                    ESP_LOGI(kTag, "T2 GPIO2 touched raw=%lu baseline=%lu delta=%lu",
+                             static_cast<unsigned long>(raw),
+                             static_cast<unsigned long>(channel.baseline),
+                             static_cast<unsigned long>(raw - channel.baseline));
+                }
             } else {
                 const uint32_t duration = now_ms - channel.press_started_ms;
+                if (index == 1) {
+                    ESP_LOGI(kTag, "T2 GPIO2 released duration=%lu ms raw=%lu baseline=%lu",
+                             static_cast<unsigned long>(duration),
+                             static_cast<unsigned long>(raw),
+                             static_cast<unsigned long>(channel.baseline));
+                }
                 if (duration >= kShortTouchMinMs && duration <= kShortTouchMaxMs &&
                     now_ms - channel.last_event_ms >= kTouchEventCooldownMs) {
                     channel.last_event_ms = now_ms;
+                    if (index == 1) ESP_LOGI(kTag, "T2 short touch accepted; emitting touch_2_short");
                     Emit(index == 0 ? PhysicalInteractionEvent::kTouch1Short
                                     : PhysicalInteractionEvent::kTouch2Short);
+                } else if (index == 1) {
+                    ESP_LOGI(kTag, "T2 short touch not emitted: duration=%lu ms%s",
+                             static_cast<unsigned long>(duration),
+                             duration > kShortTouchMaxMs ? " exceeds 900 ms" :
+                             duration < kShortTouchMinMs ? " below 35 ms" : " cooldown active");
                 }
             }
         }

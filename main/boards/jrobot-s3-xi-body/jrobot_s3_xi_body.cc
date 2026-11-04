@@ -16,6 +16,9 @@
 #include "config.h"
 #include "display/lcd_display.h"
 #include "led/single_led.h"
+#if CONFIG_XI_BODY_RGB_STATUS_LED
+#include "rgb_status_led.h"
+#endif
 #include "wifi_board.h"
 #include "xi_body_peripherals.h"
 #include "assets/lang_config.h"
@@ -31,6 +34,23 @@
 
 #define TAG "XiBodyV2"
 
+#if CONFIG_XI_BODY_RGB_STATUS_LED
+class XiBodyDualStatusLed final : public Led {
+public:
+    XiBodyDualStatusLed()
+        : onboard_(WS2812_LED_GPIO),
+          external_(RGB_RED_GPIO, RGB_GREEN_GPIO, RGB_BLUE_GPIO, RGB_LED_ACTIVE_LOW) {}
+
+    void OnStateChanged() override {
+        onboard_.OnStateChanged();
+        external_.OnStateChanged();
+    }
+
+private:
+    SingleLed onboard_;
+    XiBodyRgbStatusLed external_;
+};
+#endif
 class JRobotS3XiBody : public WifiBoard {
 private:
     i2c_master_bus_handle_t i2c_bus_ = nullptr;
@@ -118,7 +138,10 @@ private:
 #if CONFIG_XI_BODY_PHYSICAL_REACTION_AUDIO
                 else {
                     // Bounded queue; audio is produced only by the dedicated low-priority worker.
-                    physical_reaction_audio_.Queue(event);
+                    if (!physical_reaction_audio_.Queue(event) &&
+                        event == PhysicalInteractionEvent::kTouch2Short) {
+                        ESP_LOGW(TAG, "T2 reaction discarded: reaction queue unavailable or full");
+                    }
                 }
 #endif
             })) {
@@ -231,7 +254,11 @@ public:
 
     Led* GetLed() override {
         // Keep the on-board WS2812 as the application status indicator.
+#if CONFIG_XI_BODY_RGB_STATUS_LED
+        static XiBodyDualStatusLed led;
+#else
         static SingleLed led(WS2812_LED_GPIO);
+#endif
         return &led;
     }
 };

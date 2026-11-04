@@ -17,6 +17,10 @@ private:
     void ApplyFaceTheme();
 
     LumiFaceEngine face_engine_;
+#if CONFIG_XI_BODY_ORIENTATION_MARKER
+    lv_obj_t* orientation_marker_ = nullptr;
+    lv_obj_t* orientation_arrow_ = nullptr;
+#endif
 };
 
 #endif  // XI_BODY_DISPLAY_H

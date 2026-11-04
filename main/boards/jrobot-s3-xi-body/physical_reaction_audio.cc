@@ -66,22 +66,48 @@ void PhysicalReactionAudio::Run() {
     while (true) {
         if (xQueueReceive(queue_, &request, portMAX_DELAY) != pdPASS) continue;
         const uint32_t now_ms = static_cast<uint32_t>(esp_timer_get_time() / 1000);
-        if (now_ms - request.queued_at_ms > kPendingReactionMaxAgeMs) continue;
-
-        std::string_view clip;
-        if (!ResolveClip(request.event, clip)) {
-            ESP_LOGD(kTag, "No local clip configured for %s", PhysicalInteractionEventName(request.event));
+        if (now_ms - request.queued_at_ms > kPendingReactionMaxAgeMs) {
+            if (request.event == PhysicalInteractionEvent::kTouch2Short)
+                ESP_LOGW(kTag, "T2 reaction discarded: request expired");
             continue;
         }
 
-        if (last_played_ms_ != 0 && now_ms - last_played_ms_ < kTaskPollCooldownMs) continue;
+        std::string_view clip;
+        if (!ResolveClip(request.event, clip)) {
+            if (request.event == PhysicalInteractionEvent::kTouch2Short)
+                ESP_LOGW(kTag, "T2 reaction discarded: no clip configured");
+            else
+                ESP_LOGD(kTag, "No local clip configured for %s", PhysicalInteractionEventName(request.event));
+            continue;
+        }
+
+        if (last_played_ms_ != 0 && now_ms - last_played_ms_ < kTaskPollCooldownMs) {
+            if (request.event == PhysicalInteractionEvent::kTouch2Short)
+                ESP_LOGI(kTag, "T2 reaction discarded: cooldown active");
+            continue;
+        }
 
         auto& app = Application::GetInstance();
-        if (app.GetDeviceState() != kDeviceStateIdle || !app.GetAudioService().CanPlayLocalSound()) continue;
+        if (app.GetDeviceState() != kDeviceStateIdle) {
+            if (request.event == PhysicalInteractionEvent::kTouch2Short)
+                ESP_LOGI(kTag, "T2 reaction discarded: XiaoZhi state is not idle (%d)", app.GetDeviceState());
+            continue;
+        }
+        if (!app.GetAudioService().CanPlayLocalSound()) {
+            if (request.event == PhysicalInteractionEvent::kTouch2Short)
+                ESP_LOGI(kTag, "T2 reaction discarded: audio service is busy");
+            continue;
+        }
 
         const bool played = app.GetAudioService().PlayLocalSoundWhenIdle(clip, [&app]() {
             return app.GetDeviceState() == kDeviceStateIdle;
         });
-        if (played) last_played_ms_ = now_ms;
+        if (played) {
+            last_played_ms_ = now_ms;
+            if (request.event == PhysicalInteractionEvent::kTouch2Short)
+                ESP_LOGI(kTag, "T2 reaction clip started");
+        } else if (request.event == PhysicalInteractionEvent::kTouch2Short) {
+            ESP_LOGW(kTag, "T2 reaction discarded: local playback did not start");
+        }
     }
 }
