@@ -35,7 +35,7 @@
 #define TAG "XiBodyV2"
 
 namespace {
-constexpr bool kGc9a01MirrorX = true;
+constexpr bool kGc9a01MirrorX = false;
 constexpr bool kGc9a01MirrorY = true;
 constexpr bool kGc9a01SwapXY = false;
 }  // namespace
