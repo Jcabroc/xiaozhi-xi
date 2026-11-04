@@ -21,22 +21,6 @@ void XiBodyDisplay::SetupUI() {
         ESP_LOGE(TAG, "Failed to initialize Lumi Face Engine");
         return;
     }
-#if CONFIG_XI_BODY_ORIENTATION_MARKER
-    orientation_marker_ = lv_label_create(emoji_box_);
-    lv_label_set_text(orientation_marker_, "ARRIBA");
-    lv_obj_set_width(orientation_marker_, LV_HOR_RES);
-    lv_obj_set_style_text_align(orientation_marker_, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_color(orientation_marker_, lv_color_hex(0xFFD54A), 0);
-    lv_obj_align(orientation_marker_, LV_ALIGN_TOP_MID, 0, 8);
-
-    orientation_arrow_ = lv_line_create(emoji_box_);
-    static lv_point_precise_t arrow_points[] = {{120, 67}, {120, 43}, {112, 52}, {120, 43}, {128, 52}};
-    lv_line_set_points(orientation_arrow_, arrow_points, 5);
-    lv_obj_set_style_line_color(orientation_arrow_, lv_color_hex(0xFFD54A), 0);
-    lv_obj_set_style_line_width(orientation_arrow_, 3, 0);
-    lv_obj_set_style_line_rounded(orientation_arrow_, true, 0);
-    lv_obj_remove_flag(orientation_arrow_, LV_OBJ_FLAG_CLICKABLE);
-#endif
     ApplyFaceTheme();
 }
 

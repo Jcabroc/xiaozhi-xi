@@ -34,6 +34,12 @@
 
 #define TAG "XiBodyV2"
 
+namespace {
+constexpr bool kGc9a01MirrorX = true;
+constexpr bool kGc9a01MirrorY = true;
+constexpr bool kGc9a01SwapXY = false;
+}  // namespace
+
 #if CONFIG_XI_BODY_RGB_STATUS_LED
 class XiBodyDualStatusLed final : public Led {
 public:
@@ -83,9 +89,11 @@ private:
         ESP_ERROR_CHECK(esp_lcd_panel_invert_color(panel, true));
         ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel, true));
 #if CONFIG_XI_BODY_DIAGNOSTIC
-        display_ = new SpiLcdDisplay(io, panel, TFT_WIDTH, TFT_HEIGHT, 0, 0, false, false, false);
+        display_ = new SpiLcdDisplay(io, panel, TFT_WIDTH, TFT_HEIGHT, 0, 0,
+                                     kGc9a01MirrorX, kGc9a01MirrorY, kGc9a01SwapXY);
 #else
-        display_ = new XiBodyDisplay(io, panel, TFT_WIDTH, TFT_HEIGHT, 0, 0, false, false, false);
+        display_ = new XiBodyDisplay(io, panel, TFT_WIDTH, TFT_HEIGHT, 0, 0,
+                                     kGc9a01MirrorX, kGc9a01MirrorY, kGc9a01SwapXY);
 #endif
     }
 

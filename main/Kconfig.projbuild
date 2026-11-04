@@ -645,14 +645,6 @@ config XI_BODY_RGB_STATUS_LED
         Enables GPIO16/17/21 as an external RGB status indicator. Keep disabled until the LED polarity,
         common pin, and series resistors are physically confirmed.
 
-config XI_BODY_ORIENTATION_MARKER
-    bool "Show temporary GC9A01 orientation marker"
-    depends on BOARD_TYPE_JROBOT_S3_XI_BODY && !XI_BODY_DIAGNOSTIC
-    default y
-    help
-        Shows an asymmetric ARRIBA label and upward arrow above Lumi's eyes. Disable after correcting
-        the display orientation.
-
 config XI_BODY_PHYSICAL_INTERACTIONS
     bool "Enable Xi Body touch and motion events"
     depends on BOARD_TYPE_JROBOT_S3_XI_BODY && !XI_BODY_DIAGNOSTIC
